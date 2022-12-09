@@ -9,6 +9,7 @@ const form = document.querySelector('.search-form');
 const galleryEl = document.querySelector('.gallery');
 const button = document.querySelector('.load-more');
 let page = 1;
+let SearchValue = '';
 // console.log(gallery)
 form.addEventListener('submit', onSearch);
 button.addEventListener('click', onLoad);
@@ -30,7 +31,7 @@ function onSearch(evt) {
   fetchImage(SearchValue,page).then(data =>createGallery(data.hits))
 }
 
-function fetchImage(value) {
+function fetchImage(value, page) {
       return fetch(
     
     `${BASE_URL}?key=${KEY}&q=${value}&page=${page}&per_page=40&image_type=photo&orientation=horizontal&safesearch=true`)
@@ -47,10 +48,10 @@ function createGallery(arr) {
   const markup = arr.map(({ webformatURL, largeImageURL, tags, likes, views, comments, downloads })=>
 //   const markup = arr.map(item =>
         `<div class="photo-card">
-  <img src="${largeImageURL}" alt="${tags}" loading="lazy" />
+  <img src="${largeImageURL}" alt="${tags}" loading="lazy" width="250" />
   <div class="info">
     <p class="info-item">
-      <b>Likes:${likes}</b>
+      <b>Likes: ${likes}</b>
     </p>
     <p class="info-item">
       <b>Views: ${views}</b>
@@ -64,11 +65,11 @@ function createGallery(arr) {
   </div>
 </div>`
     )
-    // .join('');
+    .join('');
     galleryEl.insertAdjacentHTML('beforebegin', markup);
 }
 
 function onLoad() { 
     page += 1;
-    fetchImage(page).then(data=>console.log(data))
+    fetchImage(SearchValue, page).then(data=>console.log(data))
 }
