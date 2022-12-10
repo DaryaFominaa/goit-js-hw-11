@@ -26,3 +26,22 @@
   background-size: cover;
   background-position: center;
 }
+
+
+.gallery{
+      display: flex;
+        flex-wrap: wrap;
+        gap: 30px;
+}
+
+.search-form{
+background-color: #0a8dff;
+    display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 50px;
+}
+
+.hidden {
+  display: none;
+}

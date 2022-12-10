@@ -1,54 +1,79 @@
 import Notiflix, { Notify } from 'notiflix';
-import SimpleLightbox from "simplelightbox";
-// console.log(SimpleLightbox);
+import NewsApiServise from './fetchImages';
+import SimpleLightbox from 'simplelightbox';
+import 'simplelightbox/dist/simple-lightbox.min.css';
+// console.log(NewsApiServise);
 
-const BASE_URL = 'https://pixabay.com/api/';
-const KEY = '31783956-987fac84295b9447f966969a6';
+const newsApiServise = new NewsApiServise();
 
 const form = document.querySelector('.search-form');
 const galleryEl = document.querySelector('.gallery');
 const button = document.querySelector('.load-more');
-let page = 1;
-let SearchValue = '';
-// console.log(gallery)
+const guard = document.querySelector('.js-guard');
+
+const options = {
+  root: null,
+  rootMargin: '200px',
+  threshold: 1.0,
+};
+const observer = new IntersectionObserver(loadMore, options);
+const simpleLightbox = new SimpleLightbox('.photo-card a', {
+  captionsData: 'alt',
+  captionDelay: 250,
+});
+
 form.addEventListener('submit', onSearch);
-button.addEventListener('click', onLoad);
+button.addEventListener('click', loadMore);
 
-
+button.style.display = 'none';
 
 function onSearch(evt) {
   evt.preventDefault();
-  const {
-    searchQuery: { value: SearchValue },
-  } = evt.currentTarget.elements;
+  // button.classList.add('.is-hidden');
 
-  if (!SearchValue) {
-   Notiflix.Notify.warning('Empty field');
+  newsApiServise.searchValue = evt.currentTarget.elements.searchQuery.value;
+  // console.log(newsApiServise.searchValue);
+  if (!newsApiServise.searchValue) {
+    Notiflix.Notify.warning('Empty field');
 
     return;
   }
+  newsApiServise.resetPage();
+  clearGallery();
+  newsApiServise.fetchImage().then(data => {
+    if (!data.hits.length) {
+      clearGallery();
 
-  fetchImage(SearchValue,page).then(data =>createGallery(data.hits))
-}
+      return Notiflix.Notify.failure(
+        'Sorry, there are no images matching your search query. Please try again.'
+      );
+    }
+    if (data.hits.length >= 40) {
+      Notiflix.Notify.success(`Hooray! We found ${[data.totalHits]} images.`);
+    }
 
-function fetchImage(value, page) {
-      return fetch(
-    
-    `${BASE_URL}?key=${KEY}&q=${value}&page=${page}&per_page=40&image_type=photo&orientation=horizontal&safesearch=true`)
-    .then(resp => {
-      if (!resp.ok) {
-        throw new Error(Notiflix.Notify.failure('Erroor'));
-      }
-      return resp.json();
-    })
-    .catch(err => console.log(err));
+    galleryEl.insertAdjacentHTML('afterbegin', createGallery(data.hits));
+    simpleLightbox.refresh();
+    button.style.display = 'block';
+    observer.observe(guard);
+  });
 }
 
 function createGallery(arr) {
-  const markup = arr.map(({ webformatURL, largeImageURL, tags, likes, views, comments, downloads })=>
-//   const markup = arr.map(item =>
+  return arr
+    .map(
+      ({
+        largeImageURL,
+        webformatURL,
+        tags,
+        likes,
+        views,
+        comments,
+        downloads,
+      }) =>
         `<div class="photo-card">
-  <img src="${largeImageURL}" alt="${tags}" loading="lazy" width="250" />
+         <a href="${largeImageURL}">
+  <img src="${webformatURL}" alt="${tags}" loading="lazy" width="250" /></a>
   <div class="info">
     <p class="info-item">
       <b>Likes: ${likes}</b>
@@ -66,10 +91,42 @@ function createGallery(arr) {
 </div>`
     )
     .join('');
-    galleryEl.insertAdjacentHTML('beforebegin', markup);
 }
 
-function onLoad() { 
-    page += 1;
-    fetchImage(SearchValue, page).then(data=>console.log(data))
+function loadMore(entries, observer) {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      newsApiServise.incrementPage();
+      newsApiServise.fetchImage().then(data => {
+        galleryEl.insertAdjacentHTML('beforeend', createGallery(data.hits));
+
+        if (data.total === Number(data.totalHits)) {
+          button.style.display = 'none';
+          observer.unobserve(guard);
+          Notiflix.Notify.success(
+            "We're sorry, but you've reached the end of search results."
+          );
+        }
+        simpleLightBox.refresh();
+      });
+    }
+  });
 }
+
+function clearGallery() {
+  galleryEl.innerHTML = '';
+}
+
+// function onLoad() {
+//   newsApiServise.fetchImage().then(data => {
+//     galleryEl.insertAdjacentHTML('beforeend', createGallery(data.hits));
+
+//     if (data.total === Number(data.totalHits)) {
+//       button.style.display = 'none';
+//       Notiflix.Notify.success("We're sorry, but you've reached the end of search results.");
+
+//            observer.unobserve(guard);
+//     }
+
+//   })
+// }
